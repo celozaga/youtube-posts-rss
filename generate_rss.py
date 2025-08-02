@@ -53,13 +53,14 @@ def fetch_posts(channel_id):
                             post_url = f"https://www.youtube.com/post/{post_id}"
                             post_date = datetime.now(timezone.utc)
                             
-                            post_title = ""
-                            post_text = ""
+                            post_title = "Novo Post da Comunidade"
+                            post_text = "Conteúdo não disponível."
                             
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
-                                post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
+                                if post_text:
+                                    post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
 
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
@@ -68,25 +69,20 @@ def fetch_posts(channel_id):
                                     poll_question_runs = attachment["pollRenderer"].get("question", {}).get("runs", [])
                                     if poll_question_runs:
                                         post_title = "".join([run.get("text", "") for run in poll_question_runs])
-                                        if not post_text:
+                                        if not post_text or post_text == "Conteúdo não disponível.":
                                             post_text = post_title
                                 
                                 elif attachment.get("backstageImageRenderer"):
                                     image_data = attachment["backstageImageRenderer"]
                                     if image_data.get("carouselHeaderRenderer"):
-                                        if not post_text:
+                                        if post_text == "Conteúdo não disponível.":
                                             post_title = "Novo Post com Carrossel de Imagens"
                                             post_text = "Post com carrossel de imagens."
                                     else:
-                                        if not post_text:
+                                        if post_text == "Conteúdo não disponível.":
                                             post_title = "Novo Post com Imagem"
                                             post_text = "Post com imagem."
                             
-                            if not post_title:
-                                post_title = "Novo Post da Comunidade"
-                            if not post_text:
-                                post_text = "Conteúdo não disponível."
-
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
