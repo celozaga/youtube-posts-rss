@@ -54,10 +54,13 @@ def fetch_posts(channel_id):
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
+                                # Lógica de encurtamento do título reativada
+                                post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
                             
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
                                 if "pollRenderer" in attachment:
+                                    # Mantém o texto da pergunta como título para enquetes, o que é mais descritivo
                                     post_title = attachment["pollRenderer"]["question"]["runs"][0]["text"]
                                     if not post_text:
                                         post_text = post_title
@@ -95,7 +98,7 @@ def build_rss(posts, channel_id, filename):
         post_title = post.get('title', 'Novo post da comunidade')
         SubElement(item, 'title').text = post_title
         
-        # Correção: a descrição agora contém apenas o texto puro, sem tags
+        # Mantém a descrição com texto puro
         description_content = post.get('text', 'Conteúdo não disponível.')
         SubElement(item, 'description').text = description_content
         
