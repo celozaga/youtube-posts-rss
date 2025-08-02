@@ -44,7 +44,7 @@ def fetch_posts(channel_id):
                         if "backstagePostThreadRenderer" in item:
                             post_data = item["backstagePostThreadRenderer"].get("post", {}).get("backstagePostRenderer", {})
                             
-                            # IGNORAR posts com anexo de vídeo para evitar problemas
+                            # IGNORAR posts com anexo de vídeo
                             if post_data.get("backstageAttachment", {}).get("videoRenderer"):
                                 print(f"Post de vídeo encontrado e ignorado. ID: {post_data.get('postId')}")
                                 continue
