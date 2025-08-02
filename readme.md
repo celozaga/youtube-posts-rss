@@ -82,8 +82,3 @@ For example:
 Enjoy your automated feeds\!
 
 -----
-
-*This project is based on a community chat discussion with Gemini AI for educational purposes.*
-
-```
-```
