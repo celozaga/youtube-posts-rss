@@ -48,8 +48,7 @@ def fetch_posts(channel_id):
                             post_url = f"https://www.youtube.com/post/{post_id}"
                             post_date = datetime.now(timezone.utc)
                             
-                            # Inicializa as variáveis com valores padrão
-                            post_title = "Novo Post da Comunidade"
+                            post_title = ""
                             post_text = ""
                             
                             # Extrai o texto principal, se existir
@@ -57,25 +56,37 @@ def fetch_posts(channel_id):
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
 
-                            # Se o post tiver texto principal, usa-o para o título truncado
-                            if post_text:
-                                post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
-
-                            # Verifica se o post é uma enquete e usa a pergunta como título
+                            # Verifica se o post tem anexo de vídeo e extrai os dados
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
-                                if "pollRenderer" in attachment and "question" in attachment["pollRenderer"]:
-                                    poll_question_runs = attachment["pollRenderer"]["question"].get("runs", [])
-                                    if poll_question_runs:
-                                        post_title = "".join([run.get("text", "") for run in poll_question_runs])
-                                        if not post_text:
-                                            post_text = post_title
-                            
-                            # Se o post for apenas uma imagem sem texto ou enquete
-                            if not post_text and "backstageAttachment" in post_data and "backstageImageRenderer" in post_data["backstageAttachment"]:
-                                post_text = "Post com imagem."
-                                post_title = "Novo Post com Imagem"
-                                
+                                if "videoRenderer" in attachment:
+                                    video_data = attachment["videoRenderer"]
+                                    # Usa o título do vídeo como título do feed
+                                    if "title" in video_data and "runs" in video_data["title"]:
+                                        post_title = "".join([run.get("text", "") for run in video_data["title"]["runs"]])
+                                    
+                                    video_id = video_data.get("videoId")
+                                    if video_id:
+                                        # Cria o link direto para o vídeo
+                                        post_url = f"https://www.youtube.com/post/UgkxVnahkiK{video_id}"
+                                    
+                                    if "descriptionSnippet" in video_data and "runs" in video_data["descriptionSnippet"]:
+                                        post_text = "".join([run.get("text", "") for run in video_data["descriptionSnippet"]["runs"]])
+                                        
+                            # Se o post é uma enquete
+                            elif "backstageAttachment" in post_data and "pollRenderer" in post_data["backstageAttachment"]:
+                                poll_question_runs = post_data["backstageAttachment"]["pollRenderer"]["question"].get("runs", [])
+                                if poll_question_runs:
+                                    post_title = "".join([run.get("text", "") for run in poll_question_runs])
+                                    if not post_text:
+                                        post_text = post_title
+                                    
+                            # Se o post tem texto principal (sem anexo de video/enquete), usa-o para o título
+                            if not post_title and post_text:
+                                post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
+                            elif not post_title:
+                                post_title = "Novo Post da Comunidade"
+
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
