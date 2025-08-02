@@ -1,32 +1,53 @@
 import requests
+import re
+import json
 from bs4 import BeautifulSoup
-import datetime
+from datetime import datetime, timezone
 from xml.etree.ElementTree import Element, SubElement, tostring
 import xml.dom.minidom
 
-# Altere pelo ID do canal desejado (ex: UC... etc)
 CHANNEL_ID = "UCO6axYvGFekWJjmSdbHo-8Q"
-
 URL = f"https://www.youtube.com/channel/{CHANNEL_ID}/posts"
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
 
-def fetch_posts():
-    response = requests.get(URL, headers=HEADERS)
-    soup = BeautifulSoup(response.text, 'html.parser')
+def extract_yt_initial_data(html):
+    match = re.search(r"var ytInitialData = ({.*?});</script>", html, re.DOTALL)
+    if match:
+        return json.loads(match.group(1))
+    else:
+        return None
 
-    # Ainda não há HTML "estático" completo da aba Posts
-    # Precisaremos adaptar quando o YouTube atualizar a estrutura
-    # Exemplo alternativo: usar RSSHub e replicar a lógica
+def parse_community_posts(data):
     posts = []
+    try:
+        contents = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
+        for tab in contents:
+            tab_renderer = tab.get("tabRenderer", {})
+            if "title" in tab_renderer and tab_renderer["title"].lower() == "posts":
+                section = tab_renderer["content"]["sectionListRenderer"]["contents"][0]
+                items = section["itemSectionRenderer"]["contents"]
+                for item in items:
+                    if "backstagePostThreadRenderer" in item:
+                        post_data = item["backstagePostThreadRenderer"]["post"]["backstagePostRenderer"]
 
-    for script in soup.find_all("script"):
-        if "ytInitialData" in script.text:
-            data = script.string
-            # Aqui seria o parsing com json.loads e regex para extrair texto
-            # Exige mais detalhamento técnico (posso ajudar se quiser essa versão)
+                        text_runs = post_data.get("contentText", {}).get("runs", [])
+                        post_text = ''.join([run.get("text", "") for run in text_runs])
 
+                        post_id = post_data.get("postId")
+                        post_url = f"https://www.youtube.com/post/{post_id}"
+
+                        timestamp_usec = int(post_data.get("publishedTimeText", {}).get("runs", [{}])[0].get("text", "0").replace("•", "").strip())
+
+                        posts.append({
+                            "title": (post_text[:50] + "...") if len(post_text) > 50 else post_text,
+                            "text": post_text,
+                            "link": post_url,
+                            "date": datetime.now(timezone.utc)  # Data real é mais difícil de extrair, YouTube usa texto tipo "2 days ago"
+                        })
+    except Exception as e:
+        print("Erro ao extrair posts:", e)
     return posts
 
 def build_rss(posts):
@@ -51,6 +72,20 @@ def build_rss(posts):
     with open("feed.xml", "w", encoding="utf-8") as f:
         f.write(pretty)
 
+def main():
+    response = requests.get(URL, headers=HEADERS)
+    html = response.text
+
+    data = extract_yt_initial_data(html)
+    if not data:
+        print("ytInitialData não encontrado.")
+        return
+
+    posts = parse_community_posts(data)
+    if not posts:
+        print("Nenhum post encontrado.")
+    else:
+        build_rss(posts)
+
 if __name__ == "__main__":
-    posts = fetch_posts()
-    build_rss(posts)
+    main()
