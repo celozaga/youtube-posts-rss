@@ -5,49 +5,5 @@
     <link>https://www.youtube.com/channel/UCO6axYvGFekWJjmSdbHo-8Q/community</link>
     <description>Feed RSS da aba Comunidade do YouTube para o canal UCO6axYvGFekWJjmSdbHo-8Q</description>
     <atom:link href="https://raw.githubusercontent.com/celozaga/youtube-posts-rss/main/celozaga.xml" rel="self" type="application/rss+xml"/>
-    <item>
-      <title>BREAKING: Rust Mobile is now available for global pre-registration on Android and iOS devices, with ...</title>
-      <description>BREAKING: Rust Mobile is now available for global pre-registration on Android and iOS devices, with a hands-on demo coming to Gamescom 2025.
-
-Pre-Register: rustmobile.com
-
-#RustMobile</description>
-      <pubDate>Sat, 02 Aug 2025 08:47:01 GMT</pubDate>
-      <link>https://www.youtube.com/post/UgkxVnahkiKvo4UF74glp7pxYEd8ex0ZpYca</link>
-      <guid isPermaLink="false">https://www.youtube.com/post/UgkxVnahkiKvo4UF74glp7pxYEd8ex0ZpYca</guid>
-    </item>
-    <item>
-      <title>BREAKING: Farlight 84 relaunches on August 7 for PC, iOS, and Android. The massive update introduces...</title>
-      <description>BREAKING: Farlight 84 relaunches on August 7 for PC, iOS, and Android. The massive update introduces a first-person mode, parkour mechanics, and a new map called Nextara.
-
-#Farlight84</description>
-      <pubDate>Sat, 02 Aug 2025 08:47:01 GMT</pubDate>
-      <link>https://www.youtube.com/post/Ugkx2MOBtsFCmfxCG03U3G5avNYc3_NLaL94</link>
-      <guid isPermaLink="false">https://www.youtube.com/post/Ugkx2MOBtsFCmfxCG03U3G5avNYc3_NLaL94</guid>
-    </item>
-    <item>
-      <title>BREAKING: Sony is suing Tencent, claiming its upcoming game, Light of Motiram, is a &quot;slavish clone&quot; ...</title>
-      <description>BREAKING: Sony is suing Tencent, claiming its upcoming game, Light of Motiram, is a &quot;slavish clone&quot; of the &quot;valuable&quot; Horizon franchise! 
-
-Sony alleges Tencent tried to license the IP, and when refused, proceeded with the &quot;knock-off.&quot;
-
-#LightofMotiram</description>
-      <pubDate>Sat, 02 Aug 2025 08:47:01 GMT</pubDate>
-      <link>https://www.youtube.com/post/Ugkx8nj0soPYlssaDTZczr0H3NCLOG-3U10q</link>
-      <guid isPermaLink="false">https://www.youtube.com/post/Ugkx8nj0soPYlssaDTZczr0H3NCLOG-3U10q</guid>
-    </item>
-    <item>
-      <title>TENCENT: Party Stars' Palworld-like mode is receiving a new round of testing in China.
-
-A Chinese m...</title>
-      <description>TENCENT: Party Stars' Palworld-like mode is receiving a new round of testing in China.
-
-A Chinese mobile phone number and a QQ or WeChat account are required.
-
-#PartyStars</description>
-      <pubDate>Sat, 02 Aug 2025 08:47:01 GMT</pubDate>
-      <link>https://www.youtube.com/post/UgkxQEE-7vEnfwMkRV94hzhfRWylkM8ZNY08</link>
-      <guid isPermaLink="false">https://www.youtube.com/post/UgkxQEE-7vEnfwMkRV94hzhfRWylkM8ZNY08</guid>
-    </item>
   </channel>
 </rss>

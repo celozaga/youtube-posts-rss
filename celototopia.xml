@@ -5,14 +5,5 @@
     <link>https://www.youtube.com/channel/UCFWAzRf9YU6j0k7zuka9Drw/community</link>
     <description>Feed RSS da aba Comunidade do YouTube para o canal UCFWAzRf9YU6j0k7zuka9Drw</description>
     <atom:link href="https://raw.githubusercontent.com/celozaga/youtube-posts-rss/main/celototopia.xml" rel="self" type="application/rss+xml"/>
-    <item>
-      <title>From the creators of TikTok comes Project: Atom – the ultimate multiplayer party experience with end...</title>
-      <description>From the creators of TikTok comes Project: Atom – the ultimate multiplayer party experience with endless fun, creativity, and chaos!
-
-#ProjectAtom</description>
-      <pubDate>Sat, 02 Aug 2025 08:47:02 GMT</pubDate>
-      <link>https://www.youtube.com/post/Ugkxv_bKBYt5ZJCBY6kX4sX3PjTLH52_4PK-</link>
-      <guid isPermaLink="false">https://www.youtube.com/post/Ugkxv_bKBYt5ZJCBY6kX4sX3PjTLH52_4PK-</guid>
-    </item>
   </channel>
 </rss>
