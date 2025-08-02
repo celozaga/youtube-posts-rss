@@ -44,7 +44,7 @@ def fetch_posts(channel_id):
                         if "backstagePostThreadRenderer" in item:
                             post_data = item["backstagePostThreadRenderer"].get("post", {}).get("backstagePostRenderer", {})
                             
-                            # IGNORAR posts com anexo de vídeo
+                            # IGNORA posts com anexo de vídeo
                             if post_data.get("backstageAttachment", {}).get("videoRenderer"):
                                 print(f"Post de vídeo encontrado e ignorado. ID: {post_data.get('postId')}")
                                 continue
@@ -59,6 +59,7 @@ def fetch_posts(channel_id):
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
+                                # Lógica de título encurtado, mas com fallback seguro
                                 if post_text:
                                     post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
 
@@ -68,8 +69,23 @@ def fetch_posts(channel_id):
                                 if attachment.get("pollRenderer"):
                                     poll_question_runs = attachment["pollRenderer"].get("question", {}).get("runs", [])
                                     if poll_question_runs:
-                                        post_text = "".join([run.get("text", "") for run in poll_question_runs])
+                                        if not post_text:
+                                            post_text = "".join([run.get("text", "") for run in poll_question_runs])
                                 
+                                elif attachment.get("backstageImageRenderer"):
+                                    image_data = attachment["backstageImageRenderer"]
+                                    if image_data.get("carouselHeaderRenderer"):
+                                        if not post_text:
+                                            post_text = "Post com carrossel de imagens."
+                                    else:
+                                        if not post_text:
+                                            post_text = "Post com imagem."
+                            
+                            if not post_title:
+                                post_title = "Nova Postagem da Comunidade"
+                            if not post_text:
+                                post_text = "Conteúdo não disponível."
+
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
