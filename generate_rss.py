@@ -5,7 +5,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 import xml.dom.minidom
 
 # Altere pelo ID do canal desejado (ex: UC... etc)
-CHANNEL_ID = "SEU_CANAL_AQUI"
+CHANNEL_ID = "UCO6axYvGFekWJjmSdbHo-8Q"
 
 URL = f"https://www.youtube.com/channel/{CHANNEL_ID}/posts"
 HEADERS = {
