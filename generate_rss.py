@@ -7,6 +7,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 import xml.dom.minidom
 
 def fetch_posts(channel_id):
+    """Busca a página e extrai os posts do ytInitialData."""
     url = f"https://www.youtube.com/channel/{channel_id}/community"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
@@ -17,82 +18,104 @@ def fetch_posts(channel_id):
         response.raise_for_status()
         html = response.text
     except requests.RequestException as e:
-        print(f"[ERRO] Falha ao buscar a página do canal {channel_id}: {e}")
+        print(f"Erro ao buscar a URL para o canal {channel_id}: {e}")
         return []
 
     match = re.search(r"var ytInitialData = ({.*?});</script>", html, re.DOTALL)
     if not match:
-        print(f"[ERRO] ytInitialData não encontrado para o canal {channel_id}.")
+        print(f"ytInitialData não encontrado para o canal {channel_id}. A estrutura da página pode ter mudado.")
         return []
 
     try:
         data = json.loads(match.group(1))
     except json.JSONDecodeError as e:
-        print(f"[ERRO] Falha ao decodificar JSON do canal {channel_id}: {e}")
+        print(f"Erro ao decodificar JSON para o canal {channel_id}: {e}")
         return []
 
     posts = []
     try:
-        tabs = data.get("contents", {}).get("twoColumnBrowseResultsRenderer", {}).get("tabs", [])
-        for tab in tabs:
-            title = tab.get("tabRenderer", {}).get("title", "").lower()
-            tab_id = tab.get("tabRenderer", {}).get("tabIdentifier", "")
-            if title in ["posts", "comunidade"] or tab_id == "community":
-                section_contents = tab["tabRenderer"]["content"]["sectionListRenderer"]["contents"]
-                items = section_contents[0]["itemSectionRenderer"]["contents"]
-                for item in items:
-                    if "backstagePostThreadRenderer" not in item:
-                        continue
+        contents = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
+        for tab in contents:
+            if "tabRenderer" in tab and tab["tabRenderer"]["title"].lower() == "posts":
+                section = tab["tabRenderer"]["content"]["sectionListRenderer"]["contents"][0]
+                if "itemSectionRenderer" in section:
+                    items = section["itemSectionRenderer"]["contents"]
+                    for item in items:
+                        if "backstagePostThreadRenderer" in item:
+                            post_data = item["backstagePostThreadRenderer"]["post"]["backstagePostRenderer"]
+                            
+                            post_id = post_data.get("postId")
+                            post_url = f"https://www.youtube.com/post/{post_id}"
+                            post_date = datetime.now(timezone.utc)
+                            
+                            post_title = ""
+                            post_text = ""
+                            
+                            # Extrai o texto principal, se existir
+                            content_text_runs = post_data.get("contentText", {}).get("runs", [])
+                            if content_text_runs:
+                                post_text = "".join([run.get("text", "") for run in content_text_runs])
+                                post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
 
-                    post_data = item["backstagePostThreadRenderer"]["post"]["backstagePostRenderer"]
-                    post_id = post_data.get("postId")
-                    post_url = f"https://www.youtube.com/post/{post_id}"
-                    post_date = datetime.now(timezone.utc)
+                            # Verifica se o post tem anexo e processa de acordo com o tipo
+                            if "backstageAttachment" in post_data:
+                                attachment = post_data["backstageAttachment"]
+                                
+                                if "videoRenderer" in attachment:
+                                    video_data = attachment["videoRenderer"]
+                                    video_title_runs = video_data.get("title", {}).get("runs", [])
+                                    if video_title_runs:
+                                        post_title = "".join([run.get("text", "") for run in video_title_runs])
+                                    
+                                    video_id = video_data.get("videoId")
+                                    if video_id:
+                                        post_url = f"https://www.youtube.com/post/UgkxVnahkiK{video_id}"
+                                    
+                                    description_snippet_runs = video_data.get("descriptionSnippet", {}).get("runs", [])
+                                    if description_snippet_runs:
+                                        post_text = "".join([run.get("text", "") for run in description_snippet_runs])
+                                
+                                elif "pollRenderer" in attachment:
+                                    poll_question_runs = attachment["pollRenderer"].get("question", {}).get("runs", [])
+                                    if poll_question_runs:
+                                        post_title = "".join([run.get("text", "") for run in poll_question_runs])
+                                        if not post_text:
+                                            post_text = post_title
+                                
+                                elif "backstageImageRenderer" in attachment:
+                                    image_data = attachment["backstageImageRenderer"]
+                                    if "carouselHeaderRenderer" in image_data:
+                                        if not post_text:
+                                            post_title = "Novo Post com Carrossel de Imagens"
+                                            post_text = "Post com carrossel de imagens."
+                                    else:
+                                        if not post_text:
+                                            post_title = "Novo Post com Imagem"
+                                            post_text = "Post com imagem."
+                            
+                            if not post_title:
+                                post_title = "Novo Post da Comunidade"
+                            if not post_text:
+                                post_text = "Conteúdo não disponível."
 
-                    post_title = "Novo Post da Comunidade"
-                    post_text = ""
-
-                    # Texto do post
-                    runs = post_data.get("contentText", {}).get("runs", [])
-                    if runs:
-                        post_text = "".join([r.get("text", "") for r in runs])
-
-                    # Anexos
-                    attachment = post_data.get("backstageAttachment", {})
-
-                    if attachment.get("pollRenderer"):
-                        poll = attachment["pollRenderer"]
-                        question = poll.get("question", {}).get("runs", [])
-                        if question and not post_text:
-                            post_text = "".join([r.get("text", "") for r in question])
-                    
-                    elif attachment.get("backstageImageRenderer") and not post_text:
-                        post_text = "Post com imagem."
-
-                    elif attachment.get("videoRenderer") and not post_text:
-                        post_text = "Post com vídeo."
-
-                    if not post_text:
-                        post_text = "Conteúdo não disponível."
-
-                    posts.append({
-                        "title": post_title,
-                        "text": post_text,
-                        "link": post_url,
-                        "date": post_date,
-                    })
-                    print(f"[OK] Post encontrado: {post_id}")
-
-    except Exception as e:
-        print(f"[ERRO] Estrutura inesperada ao processar canal {channel_id}: {e}")
+                            posts.append({
+                                "title": post_title,
+                                "text": post_text,
+                                "link": post_url,
+                                "date": post_date,
+                            })
+                            print(f"Post encontrado: {post_id}")
+    except KeyError as e:
+        print(f"Estrutura do JSON inesperada para o canal {channel_id}. Chave ausente: {e}. A estrutura da página pode ter mudado.")
         return []
-
+    
     return posts
 
 def build_rss(posts, channel_id, filename):
+    """Cria e salva o arquivo RSS com os posts extraídos."""
     rss = Element('rss', version='2.0', **{'xmlns:atom': 'http://www.w3.org/2005/Atom'})
     channel = SubElement(rss, 'channel')
-
+    
     SubElement(channel, 'title').text = f"YouTube Community Posts - {channel_id}"
     SubElement(channel, 'link').text = f"https://www.youtube.com/channel/{channel_id}/community"
     SubElement(channel, 'description').text = f"Feed RSS da aba Comunidade do YouTube para o canal {channel_id}"
@@ -104,8 +127,13 @@ def build_rss(posts, channel_id, filename):
 
     for post in posts:
         item = SubElement(channel, 'item')
-        SubElement(item, 'title').text = post.get('title', 'Novo post da comunidade')
-        SubElement(item, 'description').text = post.get('text', 'Conteúdo não disponível.')
+        
+        post_title = post.get('title', 'Novo post da comunidade')
+        SubElement(item, 'title').text = post_title
+        
+        description_content = post.get('text', 'Conteúdo não disponível.')
+        SubElement(item, 'description').text = description_content
+        
         SubElement(item, 'pubDate').text = post['date'].strftime('%a, %d %b %Y %H:%M:%S GMT')
         SubElement(item, 'link').text = post['link']
         SubElement(item, 'guid', {'isPermaLink': 'false'}).text = post['link']
@@ -123,11 +151,11 @@ def main():
 
     channel_id = sys.argv[1]
     output_filename = sys.argv[2]
-    print(f"[INFO] Processando canal: {channel_id} → {output_filename}")
-
+    print(f"Processando canal: {channel_id} para o arquivo: {output_filename}")
+    
     posts = fetch_posts(channel_id)
     build_rss(posts, channel_id, output_filename)
-    print(f"[SUCESSO] Feed RSS com {len(posts)} posts gerado em: {output_filename}")
+    print(f"Feed RSS com {len(posts)} posts gerado com sucesso em {output_filename}.")
 
 if __name__ == "__main__":
     main()
