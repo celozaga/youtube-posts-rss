@@ -16,57 +16,47 @@ def extract_yt_initial_data(html):
     match = re.search(r"var ytInitialData = ({.*?});</script>", html, re.DOTALL)
     if match:
         return json.loads(match.group(1))
-    else:
-        return None
+    return None
 
 def parse_community_posts(data):
     posts = []
     try:
-        contents = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
-        for tab in contents:
+        tabs = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
+        for tab in tabs:
             tab_renderer = tab.get("tabRenderer", {})
-            if "title" in tab_renderer and tab_renderer["title"].lower() == "posts":
-                section = tab_renderer["content"]["sectionListRenderer"]["contents"][0]
-                items = section["itemSectionRenderer"]["contents"]
+            if tab_renderer.get("title", "").lower() == "posts":
+                contents = tab_renderer["content"]["sectionListRenderer"]["contents"][0]
+                items = contents["itemSectionRenderer"]["contents"]
                 for item in items:
-                    if "backstagePostThreadRenderer" in item:
-                        post_data = item["backstagePostThreadRenderer"]["post"]["backstagePostRenderer"]
-
-                        text_runs = post_data.get("contentText", {}).get("runs", [])
-                        post_text = ''.join([run.get("text", "") for run in text_runs])
-
-                        post_id = post_data.get("postId")
-                        post_url = f"https://www.youtube.com/post/{post_id}"
-
-                        timestamp_usec = int(post_data.get("publishedTimeText", {}).get("runs", [{}])[0].get("text", "0").replace("•", "").strip())
-
+                    thread = item.get("backstagePostThreadRenderer", {}).get("post", {}).get("backstagePostRenderer", {})
+                    if thread:
+                        runs = thread.get("contentText", {}).get("runs", [])
+                        text = ''.join([r.get("text", "") for r in runs])
+                        post_id = thread.get("postId")
+                        link = f"https://www.youtube.com/post/{post_id}"
                         posts.append({
-                            "title": (post_text[:50] + "...") if len(post_text) > 50 else post_text,
-                            "text": post_text,
-                            "link": post_url,
-                            "date": datetime.now(timezone.utc)  # Data real é mais difícil de extrair, YouTube usa texto tipo "2 days ago"
+                            "text": text,
+                            "link": link,
+                            "date": datetime.now(timezone.utc)
                         })
     except Exception as e:
         print("Erro ao extrair posts:", e)
     return posts
 
 def build_rss(posts):
-    rss = Element('rss')
-    rss.set('version', '2.0')
+    rss = Element('rss', version="2.0")
     channel = SubElement(rss, 'channel')
-
-    SubElement(channel, 'title').text = "YouTube Community Posts"
+    SubElement(channel, 'title').text = "YouTube Community Feed"
     SubElement(channel, 'link').text = URL
-    SubElement(channel, 'description').text = "Feed RSS da aba Comunidade do YouTube"
+    SubElement(channel, 'description').text = "Public community posts feed"
 
     for post in posts:
         item = SubElement(channel, 'item')
-        SubElement(item, 'title').text = post['title']
-        SubElement(item, 'description').text = post['text']
-        SubElement(item, 'pubDate').text = post['date'].strftime('%a, %d %b %Y %H:%M:%S GMT')
-        SubElement(item, 'link').text = post['link']
+        SubElement(item, 'description').text = post["text"]
+        SubElement(item, 'link').text = post["link"]
+        SubElement(item, 'pubDate').text = post["date"].strftime('%a, %d %b %Y %H:%M:%S GMT')
 
-    xml_str = tostring(rss, 'utf-8')
+    xml_str = tostring(rss, encoding='utf-8')
     pretty = xml.dom.minidom.parseString(xml_str).toprettyxml(indent="  ")
 
     with open("feed.xml", "w", encoding="utf-8") as f:
