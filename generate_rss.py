@@ -48,37 +48,25 @@ def fetch_posts(channel_id):
                             post_url = f"https://www.youtube.com/post/{post_id}"
                             post_date = datetime.now(timezone.utc)
                             
-                            # Tenta extrair título e texto de diferentes locais
-                            post_title = "Post da Comunidade"
+                            post_title = "Novo Post da Comunidade"
                             post_text = "Conteúdo não disponível."
-                            post_image = None
                             
-                            # Extrair texto principal
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
-                                post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
-
-                            # Extrair dados de imagem (se houver)
+                            
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
-                                if "backstageImageRenderer" in attachment:
-                                    thumbnails = attachment["backstageImageRenderer"]["image"]["thumbnails"]
-                                    if thumbnails:
-                                        post_image = max(thumbnails, key=lambda x: x['width'])['url']
                                 if "pollRenderer" in attachment:
-                                    # Se for uma enquete, usa o texto da enquete como título
                                     post_title = attachment["pollRenderer"]["question"]["runs"][0]["text"]
-                                    # O texto principal pode estar vazio, então usamos o post_title como fallback
                                     if not post_text:
                                         post_text = post_title
-                            
+                                    
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
                                 "link": post_url,
                                 "date": post_date,
-                                "image": post_image
                             })
                             print(f"Post encontrado: {post_id}")
     except KeyError as e:
@@ -103,12 +91,12 @@ def build_rss(posts, channel_id, filename):
 
     for post in posts:
         item = SubElement(channel, 'item')
+        
         post_title = post.get('title', 'Novo post da comunidade')
         SubElement(item, 'title').text = post_title
         
+        # Correção: a descrição agora contém apenas o texto puro, sem tags
         description_content = post.get('text', 'Conteúdo não disponível.')
-        if post.get('image'):
-            description_content = f"<img src='{post['image']}' /><br/>{description_content}"
         SubElement(item, 'description').text = description_content
         
         SubElement(item, 'pubDate').text = post['date'].strftime('%a, %d %b %Y %H:%M:%S GMT')
@@ -131,11 +119,8 @@ def main():
     print(f"Processando canal: {channel_id} para o arquivo: {output_filename}")
     
     posts = fetch_posts(channel_id)
-    if posts:
-        build_rss(posts, channel_id, output_filename)
-        print(f"Feed RSS com {len(posts)} posts gerado com sucesso em {output_filename}.")
-    else:
-        print(f"Nenhum post encontrado para gerar o feed para o canal {channel_id}.")
+    build_rss(posts, channel_id, output_filename)
+    print(f"Feed RSS com {len(posts)} posts gerado com sucesso em {output_filename}.")
 
 if __name__ == "__main__":
     main()
