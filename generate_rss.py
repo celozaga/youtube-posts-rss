@@ -43,39 +43,38 @@ def fetch_posts(channel_id):
                     for item in items:
                         if "backstagePostThreadRenderer" in item:
                             post_data = item["backstagePostThreadRenderer"]["post"]["backstagePostRenderer"]
+
+                            # IGNORA posts de vídeo para evitar erros
+                            if "backstageAttachment" in post_data and "videoRenderer" in post_data["backstageAttachment"]:
+                                print(f"Post de vídeo encontrado e ignorado. ID: {post_data.get('postId')}")
+                                continue
                             
                             post_id = post_data.get("postId")
                             post_url = f"https://www.youtube.com/post/{post_id}"
                             post_date = datetime.now(timezone.utc)
                             
-                            # Inicializa as variáveis com valores padrão
                             post_title = "Novo Post da Comunidade"
                             post_text = "Conteúdo não disponível."
                             
-                            # Extrai o texto do post
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
-
-                            # Reativa a lógica de encurtamento do título com base no texto extraído
-                            if post_text:
                                 post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
 
-                            # Verifica se o post é uma enquete e usa o texto da pergunta como título
-                            if "backstageAttachment" in post_data:
-                                attachment = post_data["backstageAttachment"]
-                                if "pollRenderer" in attachment and "question" in attachment["pollRenderer"]:
-                                    poll_question_runs = attachment["pollRenderer"]["question"].get("runs", [])
-                                    if poll_question_runs:
-                                        post_title = "".join([run.get("text", "") for run in poll_question_runs])
-                                        
+                            if "backstageAttachment" in post_data and "pollRenderer" in post_data["backstageAttachment"]:
+                                poll_question_runs = post_data["backstageAttachment"]["pollRenderer"]["question"].get("runs", [])
+                                if poll_question_runs:
+                                    post_title = "".join([run.get("text", "") for run in poll_question_runs])
+                                    if not post_text:
+                                        post_text = post_title
+                                    
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
                                 "link": post_url,
                                 "date": post_date,
                             })
-                            print(f"Post encontrado: {post_id}")
+                            print(f"Post de texto/enquete encontrado: {post_id}")
     except KeyError as e:
         print(f"Estrutura do JSON inesperada para o canal {channel_id}. Chave ausente: {e}. A estrutura da página pode ter mudado.")
         return []
@@ -130,4 +129,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
