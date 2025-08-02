@@ -14,7 +14,7 @@ jobs:
         # Adicione aqui os IDs dos canais e os nomes dos arquivos RSS
         channels:
           - channel_id: "UCO6axYvGFekWJjmSdbHo-8Q"
-            filename: "celomobilegames.xml"
+            filename: "celozaga.xml"
           - channel_id: "UClgqiSfCPt-HJ3SrF3PNSNA"
             filename: "celospiritcrossing.xml"
           - channel_id: "UCFWAzRf9YU6j0k7zuka9Drw"
