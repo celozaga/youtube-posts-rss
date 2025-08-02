@@ -48,23 +48,27 @@ def fetch_posts(channel_id):
                             post_url = f"https://www.youtube.com/post/{post_id}"
                             post_date = datetime.now(timezone.utc)
                             
+                            # Inicializa as variáveis com valores padrão
                             post_title = "Novo Post da Comunidade"
                             post_text = "Conteúdo não disponível."
                             
+                            # Extrai o texto do post
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
-                                # Lógica de encurtamento do título reativada
+
+                            # Reativa a lógica de encurtamento do título com base no texto extraído
+                            if post_text:
                                 post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
-                            
+
+                            # Verifica se o post é uma enquete e usa o texto da pergunta como título
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
-                                if "pollRenderer" in attachment:
-                                    # Mantém o texto da pergunta como título para enquetes, o que é mais descritivo
-                                    post_title = attachment["pollRenderer"]["question"]["runs"][0]["text"]
-                                    if not post_text:
-                                        post_text = post_title
-                                    
+                                if "pollRenderer" in attachment and "question" in attachment["pollRenderer"]:
+                                    poll_question_runs = attachment["pollRenderer"]["question"].get("runs", [])
+                                    if poll_question_runs:
+                                        post_title = "".join([run.get("text", "") for run in poll_question_runs])
+                                        
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
@@ -98,7 +102,6 @@ def build_rss(posts, channel_id, filename):
         post_title = post.get('title', 'Novo post da comunidade')
         SubElement(item, 'title').text = post_title
         
-        # Mantém a descrição com texto puro
         description_content = post.get('text', 'Conteúdo não disponível.')
         SubElement(item, 'description').text = description_content
         
