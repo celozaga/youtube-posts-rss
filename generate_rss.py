@@ -50,13 +50,14 @@ def fetch_posts(channel_id):
                             
                             post_title = ""
                             post_text = ""
-                            post_images = []
                             
+                            # Extrai o texto principal, se existir
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
                                 post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
 
+                            # Verifica se o post tem anexo e processa de acordo com o tipo
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
                                 
@@ -81,28 +82,13 @@ def fetch_posts(channel_id):
                                         if not post_text:
                                             post_text = post_title
                                 
-                                # Lógica para carrossel e posts com imagem única
                                 elif "backstageImageRenderer" in attachment:
                                     image_data = attachment["backstageImageRenderer"]
-                                    
-                                    # Verifica se é um carrossel
                                     if "carouselHeaderRenderer" in image_data:
-                                        # Itera sobre as imagens no carrossel
-                                        images = image_data.get("carouselHeaderRenderer", {}).get("items", [])
-                                        for img in images:
-                                            if "backstageImageRenderer" in img:
-                                                thumbnails = img["backstageImageRenderer"]["image"].get("thumbnails", [])
-                                                if thumbnails:
-                                                    post_images.append(max(thumbnails, key=lambda x: x['width'])['url'])
                                         if not post_text:
                                             post_title = "Novo Post com Carrossel de Imagens"
                                             post_text = "Post com carrossel de imagens."
-                                    
-                                    # Se for uma imagem única
                                     else:
-                                        thumbnails = image_data.get("image", {}).get("thumbnails", [])
-                                        if thumbnails:
-                                            post_images.append(max(thumbnails, key=lambda x: x['width'])['url'])
                                         if not post_text:
                                             post_title = "Novo Post com Imagem"
                                             post_text = "Post com imagem."
@@ -117,7 +103,6 @@ def fetch_posts(channel_id):
                                 "text": post_text,
                                 "link": post_url,
                                 "date": post_date,
-                                "images": post_images
                             })
                             print(f"Post encontrado: {post_id}")
     except KeyError as e:
@@ -147,10 +132,6 @@ def build_rss(posts, channel_id, filename):
         SubElement(item, 'title').text = post_title
         
         description_content = post.get('text', 'Conteúdo não disponível.')
-        # Adiciona imagens à descrição se existirem
-        if post.get('images'):
-            image_tags = "".join([f"<img src='{img_url}' /><br/>" for img_url in post['images']])
-            description_content = image_tags + description_content
         SubElement(item, 'description').text = description_content
         
         SubElement(item, 'pubDate').text = post['date'].strftime('%a, %d %b %Y %H:%M:%S GMT')
