@@ -43,38 +43,64 @@ def fetch_posts(channel_id):
                     for item in items:
                         if "backstagePostThreadRenderer" in item:
                             post_data = item["backstagePostThreadRenderer"]["post"]["backstagePostRenderer"]
-
-                            # IGNORA posts de vídeo para evitar erros
-                            if "backstageAttachment" in post_data and "videoRenderer" in post_data["backstageAttachment"]:
-                                print(f"Post de vídeo encontrado e ignorado. ID: {post_data.get('postId')}")
-                                continue
                             
                             post_id = post_data.get("postId")
                             post_url = f"https://www.youtube.com/post/{post_id}"
                             post_date = datetime.now(timezone.utc)
                             
-                            post_title = "Novo Post da Comunidade"
-                            post_text = "Conteúdo não disponível."
+                            post_title = ""
+                            post_text = ""
                             
+                            # Extrai o texto principal, se existir
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
                                 post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
 
-                            if "backstageAttachment" in post_data and "pollRenderer" in post_data["backstageAttachment"]:
-                                poll_question_runs = post_data["backstageAttachment"]["pollRenderer"]["question"].get("runs", [])
-                                if poll_question_runs:
-                                    post_title = "".join([run.get("text", "") for run in poll_question_runs])
-                                    if not post_text:
-                                        post_text = post_title
+                            # Verifica se o post tem anexo de vídeo e extrai os dados
+                            if "backstageAttachment" in post_data:
+                                attachment = post_data["backstageAttachment"]
+                                
+                                if "videoRenderer" in attachment:
+                                    video_data = attachment["videoRenderer"]
+                                    video_title_runs = video_data.get("title", {}).get("runs", [])
+                                    if video_title_runs:
+                                        post_title = "".join([run.get("text", "") for run in video_title_runs])
                                     
+                                    video_id = video_data.get("videoId")
+                                    if video_id:
+                                        post_url = f"https://www.youtube.com/post/UgkxVnahkiK{video_id}"
+                                    
+                                    description_snippet_runs = video_data.get("descriptionSnippet", {}).get("runs", [])
+                                    if description_snippet_runs:
+                                        post_text = "".join([run.get("text", "") for run in description_snippet_runs])
+
+                                # Anexo de enquete
+                                elif "pollRenderer" in attachment:
+                                    poll_question_runs = attachment["pollRenderer"].get("question", {}).get("runs", [])
+                                    if poll_question_runs:
+                                        post_title = "".join([run.get("text", "") for run in poll_question_runs])
+                                        if not post_text:
+                                            post_text = post_title
+                                
+                                # Anexo de imagem sem texto principal
+                                elif "backstageImageRenderer" in attachment and not post_text:
+                                    post_title = "Novo Post com Imagem"
+                                    post_text = "Post com imagem."
+                            
+                            # Fallback final para posts sem título
+                            if not post_title:
+                                post_title = "Novo Post da Comunidade"
+                            if not post_text:
+                                post_text = "Conteúdo não disponível."
+
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
                                 "link": post_url,
                                 "date": post_date,
                             })
-                            print(f"Post de texto/enquete encontrado: {post_id}")
+                            print(f"Post encontrado: {post_id}")
     except KeyError as e:
         print(f"Estrutura do JSON inesperada para o canal {channel_id}. Chave ausente: {e}. A estrutura da página pode ter mudado.")
         return []
