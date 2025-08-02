@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+  <channel>
+    <title>YouTube Community Posts - UClgqiSfCPt-HJ3SrF3PNSNA</title>
+    <link>https://www.youtube.com/channel/UClgqiSfCPt-HJ3SrF3PNSNA/community</link>
+    <description>Feed RSS da aba Comunidade do YouTube para o canal UClgqiSfCPt-HJ3SrF3PNSNA</description>
+    <atom:link href="https://raw.githubusercontent.com/celozaga/youtube-posts-rss/main/celospiritcrossing.xml" rel="self" type="application/rss+xml"/>
+  </channel>
+</rss>
