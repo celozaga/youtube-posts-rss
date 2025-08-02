@@ -1,4 +1,4 @@
-# YouTube Community RSS Feeds
+# YouTube Posts (From Community Tab) RSS Feeds
 
 This project provides an automated solution to generate RSS feeds for YouTube channel community posts. It uses a Python script and a GitHub Actions workflow to periodically scrape community posts from a list of channels and publish them as standard RSS files, which can be used with any RSS reader or automation tool.
 
