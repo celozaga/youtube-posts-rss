@@ -48,56 +48,27 @@ def fetch_posts(channel_id):
                             post_url = f"https://www.youtube.com/post/{post_id}"
                             post_date = datetime.now(timezone.utc)
                             
-                            post_title = ""
-                            post_text = ""
+                            # Inicializa as variáveis com valores padrão
+                            post_title = "Novo Post da Comunidade"
+                            post_text = "Conteúdo não disponível."
                             
-                            # Extrai o texto principal, se existir
+                            # Extrai o texto do post
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
+
+                            # Reativa a lógica de encurtamento do título com base no texto extraído
+                            if post_text:
                                 post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
 
-                            # Verifica se o post tem anexo e processa de acordo com o tipo
+                            # Verifica se o post é uma enquete e usa o texto da pergunta como título
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
-                                
-                                if "videoRenderer" in attachment:
-                                    video_data = attachment["videoRenderer"]
-                                    video_title_runs = video_data.get("title", {}).get("runs", [])
-                                    if video_title_runs:
-                                        post_title = "".join([run.get("text", "") for run in video_title_runs])
-                                    
-                                    video_id = video_data.get("videoId")
-                                    if video_id:
-                                        post_url = f"https://www.youtube.com/post/UgkxVnahkiK{video_id}"
-                                    
-                                    description_snippet_runs = video_data.get("descriptionSnippet", {}).get("runs", [])
-                                    if description_snippet_runs:
-                                        post_text = "".join([run.get("text", "") for run in description_snippet_runs])
-                                
-                                elif "pollRenderer" in attachment:
-                                    poll_question_runs = attachment["pollRenderer"].get("question", {}).get("runs", [])
+                                if "pollRenderer" in attachment and "question" in attachment["pollRenderer"]:
+                                    poll_question_runs = attachment["pollRenderer"]["question"].get("runs", [])
                                     if poll_question_runs:
                                         post_title = "".join([run.get("text", "") for run in poll_question_runs])
-                                        if not post_text:
-                                            post_text = post_title
-                                
-                                elif "backstageImageRenderer" in attachment:
-                                    image_data = attachment["backstageImageRenderer"]
-                                    if "carouselHeaderRenderer" in image_data:
-                                        if not post_text:
-                                            post_title = "Novo Post com Carrossel de Imagens"
-                                            post_text = "Post com carrossel de imagens."
-                                    else:
-                                        if not post_text:
-                                            post_title = "Novo Post com Imagem"
-                                            post_text = "Post com imagem."
-                            
-                            if not post_title:
-                                post_title = "Novo Post da Comunidade"
-                            if not post_text:
-                                post_text = "Conteúdo não disponível."
-
+                                        
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
@@ -159,3 +130,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
