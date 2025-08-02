@@ -50,25 +50,32 @@ def fetch_posts(channel_id):
                             
                             # Inicializa as variáveis com valores padrão
                             post_title = "Novo Post da Comunidade"
-                            post_text = "Conteúdo não disponível."
+                            post_text = ""
                             
-                            # Extrai o texto do post
+                            # Extrai o texto principal, se existir
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             if content_text_runs:
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
 
-                            # Reativa a lógica de encurtamento do título com base no texto extraído
+                            # Se o post tiver texto principal, usa-o para o título truncado
                             if post_text:
                                 post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
 
-                            # Verifica se o post é uma enquete e usa o texto da pergunta como título
+                            # Verifica se o post é uma enquete e usa a pergunta como título
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
                                 if "pollRenderer" in attachment and "question" in attachment["pollRenderer"]:
                                     poll_question_runs = attachment["pollRenderer"]["question"].get("runs", [])
                                     if poll_question_runs:
                                         post_title = "".join([run.get("text", "") for run in poll_question_runs])
-                                        
+                                        if not post_text:
+                                            post_text = post_title
+                            
+                            # Se o post for apenas uma imagem sem texto ou enquete
+                            if not post_text and "backstageAttachment" in post_data and "backstageImageRenderer" in post_data["backstageAttachment"]:
+                                post_text = "Post com imagem."
+                                post_title = "Novo Post com Imagem"
+                                
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
