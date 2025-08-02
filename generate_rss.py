@@ -6,76 +6,128 @@ from datetime import datetime, timezone
 from xml.etree.ElementTree import Element, SubElement, tostring
 import xml.dom.minidom
 
+# Altere pelo ID do seu canal (se o link for youtube.com/c/nomedocanal,
+# você precisa encontrar o ID que começa com "UC...")
 CHANNEL_ID = "UCO6axYvGFekWJjmSdbHo-8Q"
-URL = f"https://www.youtube.com/channel/{CHANNEL_ID}/posts"
+
+# URL da aba Comunidade do seu canal
+URL = f"https://www.youtube.com/channel/{CHANNEL_ID}/community"
+
+# Headers para simular uma requisição de navegador
 HEADERS = {
-    "User-Agent": "Mozilla/5.0"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
 }
 
-def extract_yt_initial_data(html):
-    match = re.search(r"var ytInitialData = ({.*?});</script>", html, re.DOTALL)
-    if match:
-        return json.loads(match.group(1))
-    return None
+def fetch_posts():
+    """Busca a página e extrai os posts do ytInitialData."""
+    try:
+        response = requests.get(URL, headers=HEADERS)
+        response.raise_for_status() # Lança um erro para status de erro (4xx ou 5xx)
+        html = response.text
+    except requests.RequestException as e:
+        print(f"Erro ao buscar a URL: {e}")
+        return []
 
-def parse_community_posts(data):
+    # Extrair o JSON ytInitialData da tag <script>
+    match = re.search(r"var ytInitialData = ({.*?});</script>", html, re.DOTALL)
+    if not match:
+        print("ytInitialData não encontrado. A estrutura da página pode ter mudado.")
+        return []
+
+    try:
+        data = json.loads(match.group(1))
+    except json.JSONDecodeError as e:
+        print(f"Erro ao decodificar JSON: {e}")
+        return []
+
     posts = []
     try:
-        tabs = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
-        for tab in tabs:
-            tab_renderer = tab.get("tabRenderer", {})
-            if tab_renderer.get("title", "").lower() == "posts":
-                contents = tab_renderer["content"]["sectionListRenderer"]["contents"][0]
-                items = contents["itemSectionRenderer"]["contents"]
-                for item in items:
-                    thread = item.get("backstagePostThreadRenderer", {}).get("post", {}).get("backstagePostRenderer", {})
-                    if thread:
-                        runs = thread.get("contentText", {}).get("runs", [])
-                        text = ''.join([r.get("text", "") for r in runs])
-                        post_id = thread.get("postId")
-                        link = f"https://www.youtube.com/post/{post_id}"
-                        posts.append({
-                            "text": text,
-                            "link": link,
-                            "date": datetime.now(timezone.utc)
-                        })
-    except Exception as e:
-        print("Erro ao extrair posts:", e)
+        # Navegar pela estrutura do JSON para encontrar os posts
+        contents = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
+        for tab in contents:
+            if "tabRenderer" in tab and tab["tabRenderer"]["title"].lower() == "posts":
+                section = tab["tabRenderer"]["content"]["sectionListRenderer"]["contents"][0]
+                if "itemSectionRenderer" in section:
+                    items = section["itemSectionRenderer"]["contents"]
+                    for item in items:
+                        if "backstagePostThreadRenderer" in item:
+                            post_data = item["backstagePostThreadRenderer"]["post"]["backstagePostRenderer"]
+                            
+                            # Extrair o texto do post (pode ser multilinhas)
+                            content_text_runs = post_data.get("contentText", {}).get("runs", [])
+                            post_text = "".join([run.get("text", "") for run in content_text_runs])
+
+                            # Extrair o link do post
+                            # Usar o postId para construir a URL
+                            post_id = post_data.get("postId")
+                            post_url = f"https://www.youtube.com/post/{post_id}"
+
+                            # Extrair a data do post
+                            # O YouTube usa texto como "há 5 minutos". Vamos usar a data atual como fallback
+                            # Seria mais complexo parsear o texto "há x dias" para um timestamp real.
+                            post_date = datetime.now(timezone.utc)
+
+                            # Verificar se há uma imagem anexa
+                            post_image = None
+                            if "backstageAttachment" in post_data and "backstageImageRenderer" in post_data["backstageAttachment"]:
+                                thumbnails = post_data["backstageAttachment"]["backstageImageRenderer"]["image"]["thumbnails"]
+                                if thumbnails:
+                                    # Pega a URL da maior imagem disponível
+                                    post_image = max(thumbnails, key=lambda x: x['width'])['url']
+
+                            posts.append({
+                                "title": (post_text[:100] + "...") if len(post_text) > 100 else post_text,
+                                "text": post_text,
+                                "link": post_url,
+                                "date": post_date,
+                                "image": post_image
+                            })
+                            print(f"Post encontrado: {post_id}")
+    except KeyError as e:
+        print(f"Estrutura do JSON inesperada. Chave ausente: {e}. A estrutura da página pode ter mudado.")
+        return []
+    
     return posts
 
 def build_rss(posts):
-    rss = Element('rss', version="2.0")
+    """Cria e salva o arquivo RSS com os posts extraídos."""
+    rss = Element('rss')
+    rss.set('version', '2.0')
+    rss.set('xmlns:atom', 'http://www.w3.org/2005/Atom')
+
     channel = SubElement(rss, 'channel')
-    SubElement(channel, 'title').text = "YouTube Community Feed"
+    SubElement(channel, 'title').text = "YouTube Community Posts"
     SubElement(channel, 'link').text = URL
-    SubElement(channel, 'description').text = "Public community posts feed"
+    SubElement(channel, 'description').text = "Feed RSS da aba Comunidade do YouTube"
+    SubElement(channel, 'atom:link', {
+        'href': f"https://raw.githubusercontent.com/celozaga/youtube-posts-rss/main/feed.xml",
+        'rel': 'self',
+        'type': 'application/rss+xml'
+    })
 
     for post in posts:
         item = SubElement(channel, 'item')
-        SubElement(item, 'description').text = post["text"]
-        SubElement(item, 'link').text = post["link"]
-        SubElement(item, 'pubDate').text = post["date"].strftime('%a, %d %b %Y %H:%M:%S GMT')
+        SubElement(item, 'title').text = post['title']
+        
+        description_content = post['text']
+        if post['image']:
+            description_content = f"<img src='{post['image']}' /><br/>{description_content}"
+        SubElement(item, 'description').text = description_content
+        
+        SubElement(item, 'pubDate').text = post['date'].strftime('%a, %d %b %Y %H:%M:%S GMT')
+        SubElement(item, 'link').text = post['link']
+        SubElement(item, 'guid', {'isPermaLink': 'false'}).text = post['link']
 
-    xml_str = tostring(rss, encoding='utf-8')
+    xml_str = tostring(rss, 'utf-8')
     pretty = xml.dom.minidom.parseString(xml_str).toprettyxml(indent="  ")
 
     with open("feed.xml", "w", encoding="utf-8") as f:
         f.write(pretty)
 
-def main():
-    response = requests.get(URL, headers=HEADERS)
-    html = response.text
-
-    data = extract_yt_initial_data(html)
-    if not data:
-        print("ytInitialData não encontrado.")
-        return
-
-    posts = parse_community_posts(data)
-    if not posts:
-        print("Nenhum post encontrado.")
-    else:
-        build_rss(posts)
-
 if __name__ == "__main__":
-    main()
+    posts = fetch_posts()
+    if posts:
+        build_rss(posts)
+        print(f"Feed RSS com {len(posts)} posts gerado com sucesso.")
+    else:
+        print("Nenhum post encontrado para gerar o feed.")
