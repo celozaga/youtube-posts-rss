@@ -2,7 +2,7 @@
 
 This project provides an automated solution to generate RSS feeds for YouTube channel community posts. It uses a Python script and a GitHub Actions workflow to periodically scrape community posts from a list of channels and publish them as standard RSS files, which can be used with any RSS reader or automation tool.
 
-The primary use case is to easily cross-post your YouTube community announcements to other platforms like Discord, Twitter, or Mastodon, which often support RSS feeds.
+The primary use case is to easily cross-post your YouTube community announcements to other platforms like Discord, Reddit, or Bluesky, which often support RSS feeds.
 
 ## Features
 
