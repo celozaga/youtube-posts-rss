@@ -22,13 +22,12 @@ def fetch_posts():
     """Busca a página e extrai os posts do ytInitialData."""
     try:
         response = requests.get(URL, headers=HEADERS)
-        response.raise_for_status() # Lança um erro para status de erro (4xx ou 5xx)
+        response.raise_for_status()
         html = response.text
     except requests.RequestException as e:
         print(f"Erro ao buscar a URL: {e}")
         return []
 
-    # Extrair o JSON ytInitialData da tag <script>
     match = re.search(r"var ytInitialData = ({.*?});</script>", html, re.DOTALL)
     if not match:
         print("ytInitialData não encontrado. A estrutura da página pode ter mudado.")
@@ -42,7 +41,6 @@ def fetch_posts():
 
     posts = []
     try:
-        # Navegar pela estrutura do JSON para encontrar os posts
         contents = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
         for tab in contents:
             if "tabRenderer" in tab and tab["tabRenderer"]["title"].lower() == "posts":
@@ -53,34 +51,18 @@ def fetch_posts():
                         if "backstagePostThreadRenderer" in item:
                             post_data = item["backstagePostThreadRenderer"]["post"]["backstagePostRenderer"]
                             
-                            # Extrair o texto do post (pode ser multilinhas)
                             content_text_runs = post_data.get("contentText", {}).get("runs", [])
                             post_text = "".join([run.get("text", "") for run in content_text_runs])
 
-                            # Extrair o link do post
-                            # Usar o postId para construir a URL
                             post_id = post_data.get("postId")
                             post_url = f"https://www.youtube.com/post/{post_id}"
-
-                            # Extrair a data do post
-                            # O YouTube usa texto como "há 5 minutos". Vamos usar a data atual como fallback
-                            # Seria mais complexo parsear o texto "há x dias" para um timestamp real.
                             post_date = datetime.now(timezone.utc)
-
-                            # Verificar se há uma imagem anexa
-                            post_image = None
-                            if "backstageAttachment" in post_data and "backstageImageRenderer" in post_data["backstageAttachment"]:
-                                thumbnails = post_data["backstageAttachment"]["backstageImageRenderer"]["image"]["thumbnails"]
-                                if thumbnails:
-                                    # Pega a URL da maior imagem disponível
-                                    post_image = max(thumbnails, key=lambda x: x['width'])['url']
 
                             posts.append({
                                 "title": (post_text[:100] + "...") if len(post_text) > 100 else post_text,
                                 "text": post_text,
                                 "link": post_url,
                                 "date": post_date,
-                                "image": post_image
                             })
                             print(f"Post encontrado: {post_id}")
     except KeyError as e:
@@ -109,9 +91,8 @@ def build_rss(posts):
         item = SubElement(channel, 'item')
         SubElement(item, 'title').text = post['title']
         
+        # Correção: a descrição agora contém apenas o texto puro, sem tags
         description_content = post['text']
-        if post['image']:
-            description_content = f"<img src='{post['image']}' /><br/>{description_content}"
         SubElement(item, 'description').text = description_content
         
         SubElement(item, 'pubDate').text = post['date'].strftime('%a, %d %b %Y %H:%M:%S GMT')
