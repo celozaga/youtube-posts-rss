@@ -65,7 +65,7 @@ def fetch_posts(channel_id):
                                 post_text = "".join([run.get("text", "") for run in content_text_runs])
                                 if post_text:
                                     post_title = (post_text[:100] + "...") if len(post_text) > 100 else post_text
-                            
+
                             if "backstageAttachment" in post_data:
                                 attachment = post_data["backstageAttachment"]
                                 if attachment.get("pollRenderer"):
@@ -74,9 +74,19 @@ def fetch_posts(channel_id):
                                         if not post_text:
                                             post_text = "".join([run.get("text", "") for run in poll_question_runs])
                                 elif attachment.get("backstageImageRenderer"):
-                                    if not post_text:
-                                        post_text = "Post com imagem."
-                                        
+                                    image_data = attachment["backstageImageRenderer"]
+                                    if image_data.get("carouselHeaderRenderer"):
+                                        if not post_text:
+                                            post_text = "Post com carrossel de imagens."
+                                    else:
+                                        if not post_text:
+                                            post_text = "Post com imagem."
+                            
+                            if not post_title:
+                                post_title = "Nova Postagem da Comunidade"
+                            if not post_text:
+                                post_text = "Conteúdo não disponível."
+                            
                             posts.append({
                                 "title": post_title,
                                 "text": post_text,
