@@ -6,6 +6,20 @@ from datetime import datetime, timezone
 from xml.etree.ElementTree import Element, SubElement, tostring
 import xml.dom.minidom
 
+def find_backstage_posts(obj):
+    """Busca recursivamente todos os backstagePostThreadRenderer no JSON."""
+    found = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == "backstagePostThreadRenderer":
+                found.append(v)
+            else:
+                found.extend(find_backstage_posts(v))
+    elif isinstance(obj, list):
+        for item in obj:
+            found.extend(find_backstage_posts(item))
+    return found
+
 def fetch_posts(channel_id):
     url = f"https://www.youtube.com/channel/{channel_id}/community"
     headers = {
@@ -20,9 +34,8 @@ def fetch_posts(channel_id):
         print(f"Erro ao buscar a URL para o canal {channel_id}: {e}")
         return []
 
-    match = re.search(r"var ytInitialData = ({.*?});\s*</script>", html, re.DOTALL)
-    if not match:
-        match = re.search(r"window\['ytInitialData'\] = ({.*?});", html, re.DOTALL)
+    # Regex tolerante para o ytInitialData
+    match = re.search(r"ytInitialData[\"']?\s*=\s*({.*?});", html, re.DOTALL)
     if not match:
         print(f"ytInitialData não encontrado para o canal {channel_id}. A estrutura da página pode ter mudado.")
         return []
@@ -34,63 +47,54 @@ def fetch_posts(channel_id):
         return []
 
     posts = []
+    raw_posts = find_backstage_posts(data)
+    print(f"{channel_id}: Encontrados {len(raw_posts)} posts brutos no JSON.")
 
-    try:
-        contents = data.get("contents", {}).get("twoColumnBrowseResultsRenderer", {}).get("tabs", [])
-        for tab in contents:
-            if tab.get("tabRenderer", {}).get("title", "").lower() == "posts":
-                section_contents = tab["tabRenderer"].get("content", {}).get("sectionListRenderer", {}).get("contents", [])
-                if section_contents:
-                    items = section_contents[0].get("itemSectionRenderer", {}).get("contents", [])
-                    for item in items:
-                        if "backstagePostThreadRenderer" in item:
-                            post_data = item["backstagePostThreadRenderer"].get("post", {}).get("backstagePostRenderer", {})
-                            if post_data.get("backstageAttachment", {}).get("videoRenderer"):
-                                continue
+    for post_data in raw_posts:
+        post = post_data.get("post", {}).get("backstagePostRenderer", {})
+        # Ignorar posts de vídeo se desejado
+        if post.get("backstageAttachment", {}).get("videoRenderer"):
+            continue
 
-                            post_id = post_data.get("postId")
-                            post_url = f"https://www.youtube.com/post/{post_id}"
-                            post_date = datetime.now(timezone.utc)
+        post_id = post.get("postId")
+        post_url = f"https://www.youtube.com/post/{post_id}" if post_id else ""
+        post_date = datetime.now(timezone.utc) # Não há data real, mas pode adaptar se achar timestamp
 
-                            # Extrai texto principal
-                            post_text = ""
-                            post_title = ""
-                            content_text_runs = post_data.get("contentText", {}).get("runs", [])
-                            if content_text_runs:
-                                post_text = "".join([run.get("text", "") for run in content_text_runs])
-                                post_title = (post_text[:60] + "...") if len(post_text) > 60 else post_text
-                            else:
-                                # Enquete
-                                poll_renderer = post_data.get("backstageAttachment", {}).get("pollRenderer")
-                                if poll_renderer:
-                                    poll_question_runs = poll_renderer.get("question", {}).get("runs", [])
-                                    poll_question = "".join([run.get("text", "") for run in poll_question_runs]) if poll_question_runs else "Enquete"
-                                    post_text = poll_question
-                                    post_title = poll_question
-                                    choices = poll_renderer.get("choices", [])
-                                    if choices:
-                                        post_text += "\nOpções:\n" + "\n".join([c.get("text", "") for c in choices])
-                                else:
-                                    # Post apenas com imagem ou sem texto
-                                    post_text = "Post sem texto."
-                                    post_title = "Post sem texto."
+        post_text = ""
+        post_title = ""
+        content_text_runs = post.get("contentText", {}).get("runs", [])
+        if content_text_runs:
+            post_text = "".join([run.get("text", "") for run in content_text_runs])
+            post_title = (post_text[:60] + "...") if len(post_text) > 60 else post_text
+        else:
+            # Enquete
+            poll_renderer = post.get("backstageAttachment", {}).get("pollRenderer")
+            if poll_renderer:
+                poll_question_runs = poll_renderer.get("question", {}).get("runs", [])
+                poll_question = "".join([run.get("text", "") for run in poll_question_runs]) if poll_question_runs else "Enquete"
+                post_text = poll_question
+                post_title = poll_question
+                choices = poll_renderer.get("choices", [])
+                if choices:
+                    post_text += "\nOpções:\n" + "\n".join([c.get("text", "") for c in choices])
+            else:
+                # Post apenas com imagem ou sem texto
+                post_text = "Post sem texto."
+                post_title = "Post sem texto."
 
-                            post_title = post_title.replace('\n', ' ').strip()
-                            post_text = post_text.strip()
-                            if not post_title:
-                                post_title = "Post da comunidade"
-                            if not post_text:
-                                post_text = "Conteúdo não disponível."
+        post_title = post_title.replace('\n', ' ').strip()
+        post_text = post_text.strip()
+        if not post_title:
+            post_title = "Post da comunidade"
+        if not post_text:
+            post_text = "Conteúdo não disponível."
 
-                            posts.append({
-                                "title": post_title,
-                                "text": post_text,
-                                "link": post_url,
-                                "date": post_date,
-                            })
-    except KeyError as e:
-        print(f"Estrutura do JSON inesperada para o canal {channel_id}. Chave ausente: {e}. A estrutura da página pode ter mudado.")
-        return []
+        posts.append({
+            "title": post_title,
+            "text": post_text,
+            "link": post_url,
+            "date": post_date,
+        })
 
     return posts
 
