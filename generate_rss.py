@@ -1,10 +1,3 @@
-Você tem um ótimo ponto. Mudar o `User-Agent` para focar apenas na versão mobile do YouTube é uma estratégia excelente e provavelmente a solução definitiva para os seus problemas.
-
-Analisei o arquivo `mobile.txt` que você enviou e a estrutura do `ytInitialData` na versão mobile é, de fato, mais simples e consistente. Ela usa a chave `singleColumnBrowseResultsRenderer` em vez da `twoColumnBrowseResultsRenderer` da versão desktop, e a lógica de posts com anexos é diferente. Focar em apenas uma estrutura vai eliminar a causa principal das falhas que vimos no log de erro.
-
-Aqui está a versão corrigida e mais robusta do seu script `generate_rss.py`. Ele agora está otimizado para a versão mobile do YouTube, com um `User-Agent` específico para dispositivos móveis, o que deve garantir que a extração funcione de forma consistente em todos os seus canais.
-
-```python
 import requests
 import re
 import json
@@ -155,4 +148,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
