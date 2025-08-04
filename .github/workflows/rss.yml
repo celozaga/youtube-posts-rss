@@ -1,4 +1,4 @@
-name: Generate RSS Feeds
+name: Generate Single RSS Feed
 
 on:
   schedule:
@@ -24,26 +24,13 @@ jobs:
       - name: Install Requirements
         run: pip install beautifulsoup4 requests
 
-      - name: Generate RSS Feeds
-        run: |
-          python generate_rss.py UCO6axYvGFekWJjmSdbHo-8Q celozaga.xml
-          python generate_rss.py UClgqiSfCPt-HJ3SrF3PNSNA celospiritcrossing.xml
-          python generate_rss.py UCFWAzRf9YU6j0k7zuka9Drw celototopia.xml
-          python generate_rss.py UCUiBYLILjv5QU-LZOZhx2ow celopartystars.xml
-        env:
-          CHANNEL_ID_1: "UCO6axYvGFekWJjmSdbHo-8Q"
-          FILENAME_1: "celozaga.xml"
-          CHANNEL_ID_2: "UClgqiSfCPt-HJ3SrF3PNSNA"
-          FILENAME_2: "celospiritcrossing.xml"
-          CHANNEL_ID_3: "UCFWAzRf9YU6j0k7zuka9Drw"
-          FILENAME_3: "celototopia.xml"
-          CHANNEL_ID_4: "UCUiBYLILjv5QU-LZOZhx2ow"
-          FILENAME_4: "celopartystars.xml"
+      - name: Generate RSS Feed
+        run: python generate_rss.py
 
-      - name: Commit RSS Feeds
+      - name: Commit RSS Feed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add *.xml
-          git commit -m "Update RSS feeds" || echo "No changes to commit"
+          git add feed.xml
+          git commit -m "Update RSS feed" || echo "No changes to commit"
           git push
